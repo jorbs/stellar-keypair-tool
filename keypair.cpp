@@ -1,13 +1,9 @@
 #include <vector>
 #include <iostream>
 #include <sodium.h>
-#include <cstring>
 
 #include "lib/crc16.h"
 #include "lib/basen.h"
-
-#define MESSAGE (const unsigned char *)"test"
-#define MESSAGE_LEN 4
 
 enum VersionByte : uint8_t {
   PUBLIC_KEY = (6 << 3),
