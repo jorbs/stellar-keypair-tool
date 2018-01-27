@@ -1,6 +1,8 @@
 #include <vector>
 #include <iostream>
 #include <sodium.h>
+#include <unistd.h>
+#include <algorithm>
 
 #include "lib/crc16.h"
 #include "lib/basen.h"
@@ -24,41 +26,85 @@ std::string encode(const VersionByte &versionByte, std::vector<uint8_t> &data) {
   return bn::encode_b32(bytes);
 }
 
-inline bool hasSuffix(const std::string &input, const std::string &suffix) {
-  return input.substr(input.size() - suffix.size()) == suffix;
+inline bool hasSuffix(const std::string &input, const std::string &term) {
+  return input.substr(input.size() - term.size()) == term;
+}
+
+inline bool hasPrefix(const std::string &input, const std::string &term) {
+  return input.substr(0, term.size()) == term;
+}
+
+inline bool hasSubstr(const std::string &input, const std::string &term) {
+  return input.find(term) != std::string::npos;
+}
+
+void usage(const char* exec) {
+  std::cerr << "Usage: " << exec << " [-p|-m|-s] <term>\n\n";
 }
 
 int main(int argc, char* argv[]) {
   if (argc == 1) {
-    std::cerr << "Usage: " << argv[0] << " <suffix>\n\n";
+    usage(argv[0]);
     return 1;
   }
+
+  bool (*matches)(const std::string &input, const std::string &suffix);
+  std::string term;
+  int c;
+
+  while ((c = getopt(argc, argv, "p:m:s:")) != -1) {
+    switch (c) {
+      case 'p':
+        if (optarg[0] != 'g' && optarg[0] != 'G') {
+          std::cerr << "The prefix must start with letter G.\n";
+          return 1;
+        }
+
+        term = optarg;
+        matches = &hasPrefix;
+        break;
+      case 's':
+        term = optarg;
+        matches = &hasSuffix;
+        break;
+      case 'm':
+        term = optarg;
+        matches = &hasSubstr;
+        break;
+      case '?':
+      default:
+        usage(argv[0]);
+        return 1;
+    }
+  }
+
+  std::transform(term.begin(), term.end(), term.begin(), ::toupper);
 
   if (sodium_init() == -1) {
+    std::cerr << "Unable to init libsodium.\n";
     return 1;
   }
 
-  std::string suffix(argv[1]);
 
   for (int count = 1; true; count++) {
+    std::cout << count << " tries.\r" << std::flush;
+
     std::vector<uint8_t> pk(crypto_sign_PUBLICKEYBYTES);
     std::vector<uint8_t> sk(crypto_sign_SECRETKEYBYTES);
-    std::vector<uint8_t> seed(crypto_sign_SEEDBYTES);
 
     crypto_sign_keypair(pk.data(), sk.data());
-    crypto_sign_ed25519_sk_to_seed(seed.data(), sk.data());
 
     std::string encodedPk = encode(PUBLIC_KEY, pk);
 
-    if (hasSuffix(encodedPk, suffix)) {
-      std::string encodedSeed = encode(SEED, seed);
-      std::cout << "\a\n\nFOUND!\n\nP: " << encodedPk << std::endl
-                << "S: " << encodedSeed << "\n\n";
-      break;
-    }
+    if (matches(encodedPk, term)) {
+      std::vector<uint8_t> seed(crypto_sign_SEEDBYTES);
 
-    if (count % 5000 == 0) {
-      std::cout << count << " tries.\r" << std::flush;
+      crypto_sign_ed25519_sk_to_seed(seed.data(), sk.data());
+
+      std::cout << "\nFOUND!\n\n"
+                << encodedPk << std::endl
+                << encode(SEED, seed) << "\n\n\a";
+      break;
     }
   }
 
