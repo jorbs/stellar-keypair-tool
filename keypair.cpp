@@ -12,6 +12,16 @@ enum VersionByte : uint8_t {
   SEED = (18 << 3)
 };
 
+const std::string base32Dictionary = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+
+char checkInvalidChar(const std::string &input) {
+  for (const char& c : input)
+    if (base32Dictionary.find(c) == std::string::npos)
+      return c;
+
+  return -1;
+}
+
 std::string encode(const VersionByte &versionByte, std::vector<uint8_t> &data) {
   std::vector<uint8_t> bytes;
 
@@ -56,11 +66,11 @@ int main(int argc, char* argv[]) {
     switch (c) {
       case 'p':
         if (optarg[0] != 'g' && optarg[0] != 'G') {
-          std::cerr << "The prefix must start with letter G.\n";
-          return 1;
+          std::cout << "Prepending 'G' to the search term.\n";
+          term = "G";
         }
 
-        term = optarg;
+        term += optarg;
         matches = &hasPrefix;
         break;
       case 's':
@@ -74,17 +84,24 @@ int main(int argc, char* argv[]) {
       case '?':
       default:
         usage(argv[0]);
-        return 1;
+        return 0;
     }
   }
 
   std::transform(term.begin(), term.end(), term.begin(), ::toupper);
 
+  char invalidChar = checkInvalidChar(term);
+
+  if (invalidChar != -1) {
+    std::cerr << "\"" << invalidChar << "\" is not allowed. The search term must be scoped to:\n\t"
+              << base32Dictionary << std::endl;
+    return 0;
+  }
+
   if (sodium_init() == -1) {
     std::cerr << "Unable to init libsodium.\n";
     return 1;
   }
-
 
   for (int count = 1; true; count++) {
     std::cout << count << " tries.\r" << std::flush;
