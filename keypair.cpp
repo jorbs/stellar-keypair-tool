@@ -1,3 +1,4 @@
+#include <chrono>
 #include <vector>
 #include <iostream>
 #include <sodium.h>
@@ -103,6 +104,8 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
+  auto start = std::chrono::system_clock::now();
+
   for (int count = 1; true; count++) {
     std::cout << count << " tries.\r" << std::flush;
 
@@ -118,7 +121,10 @@ int main(int argc, char* argv[]) {
 
       crypto_sign_ed25519_sk_to_seed(seed.data(), sk.data());
 
-      std::cout << "\nFOUND!\n\n"
+      auto end = std::chrono::system_clock::now();
+      std::chrono::duration<double> elapsed_seconds = end - start;
+
+      std::cout << "\nFound in " << elapsed_seconds.count() << " seconds!\n\n"
                 << encodedPk << std::endl
                 << encode(SEED, seed) << "\n\n\a";
       break;
