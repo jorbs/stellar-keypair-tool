@@ -6,9 +6,13 @@ A tool to generate vanity Stellar public address. It was implemented in C++ in o
 2. `make`
 
 # Usage
-`./keypair [-p|-m|-s] <term>`
+`./keypair [-p|-m|-s] <term> [-j <jobs>]`
 
 It searches `term` for `prefix`, `middle` or `suffix` positions. `term` can have down case chars.
+
+## Concurrency
+
+By default, this tool creates a number of threads based on the available CPUs. This number can be overrided using the `-j` parameter.
 
 # Address validation
 
