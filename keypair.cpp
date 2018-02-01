@@ -108,9 +108,7 @@ void process(const std::string &term, bool (*matches)(const std::string &input, 
   std::vector<uint8_t> pk(crypto_sign_PUBLICKEYBYTES);
   std::vector<uint8_t> sk(crypto_sign_SECRETKEYBYTES);
 
-  while (!found) {
-    count++;
-
+  for (;!found; count++) {
     crypto_sign_keypair(pk.data(), sk.data());
 
     std::string encodedPk = encode(PUBLIC_KEY, pk);
@@ -171,7 +169,7 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  if (threadsCount == -1) {
+  if (threadsCount < 1) {
     threadsCount = getProcessingUnits();
   }
 
@@ -203,7 +201,9 @@ int main(int argc, char* argv[]) {
   auto end = std::chrono::system_clock::now();
   std::chrono::duration<double> elapsed_seconds = end - start;
 
-  std::cout << count << " tries in " << elapsed_seconds.count() << "s\n";
+  std::cout << count << " tries in "
+            << elapsed_seconds.count() << "s using "
+            << threadsCount << " threads.\n";
 
   return 0;
 }
